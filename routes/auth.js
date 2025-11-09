@@ -171,4 +171,70 @@ router.get("/me", async (req, res) => {
   }
 });
 
+// Complete onboarding - NEW ENDPOINT
+router.post("/complete-onboarding", async (req, res) => {
+  try {
+    const authHeader = req.header("Authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const user = await User.findByIdAndUpdate(
+      decoded.userId,
+      {
+        $set: {
+          "onboarding.completed": true,
+          "onboarding.restaurantCreated": true,
+        },
+      },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    console.log("✅ Onboarding completed for user:", user._id);
+
+    res.json({
+      success: true,
+      message: "Onboarding completed successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        trialEndsAt: user.trialEndsAt,
+        onboarding: user.onboarding,
+        subscription: user.subscription,
+      },
+    });
+  } catch (error) {
+    console.error("Complete onboarding error:", error);
+
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
