@@ -1,0 +1,156 @@
+{
+  "templates": [
+    {
+      "id": "template-0",
+      "name": "Gourmet Haven",
+      "description": "Dark luxury with amber & black - Premium dining experience",
+      "category": "Fine Dining",
+      "thumbnail": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop",
+      "file": "template-1.jsx",
+      "colors": {
+        "primary": "#d97706",
+        "secondary": "#18181b",
+        "accent": "#fbbf24"
+      },
+      "features": [
+        "Dark Theme",
+        "Premium Amber Gold",
+        "Professional",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-1",
+      "name": "La Maison",
+      "description": "Navy & rose gold - French fine dining elegance",
+      "category": "French Fine Dining",
+      "thumbnail": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop",
+      "file": "template-2.jsx",
+      "colors": {
+        "primary": "#f43f5e",
+        "secondary": "#1e3a8a",
+        "accent": "#0f172a"
+      },
+      "features": [
+        "Michelin Star Theme",
+        "Elegant Serif Fonts",
+        "French Luxury",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-2",
+      "name": "Verdant",
+      "description": "Emerald & gold - Organic farm-to-table sustainability",
+      "category": "Farm to Table",
+      "thumbnail": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=400&h=300&fit=crop",
+      "file": "template-3.jsx",
+      "colors": {
+        "primary": "#eab308",
+        "secondary": "#064e3b",
+        "accent": "#065f46"
+      },
+      "features": [
+        "Organic Theme",
+        "Sustainable Focus",
+        "Botanical Design",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-3",
+      "name": "Prestige",
+      "description": "Charcoal & gold - Ultra classy refined elegance",
+      "category": "Exclusive Dining",
+      "thumbnail": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop",
+      "file": "template-4.jsx",
+      "colors": {
+        "primary": "#ca8a04",
+        "secondary": "#0a0a0a",
+        "accent": "#262626"
+      },
+      "features": [
+        "Sophisticated",
+        "Crown Icon Branding",
+        "VIP Service",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-4",
+      "name": "Inferno",
+      "description": "Crimson & amber - Bold Italian-American steakhouse",
+      "category": "Steakhouse",
+      "thumbnail": "https://images.unsplash.com/photo-1558030006-450675393462?w=400&h=300&fit=crop",
+      "file": "template-5.jsx",
+      "colors": {
+        "primary": "#f59e0b",
+        "secondary": "#7f1d1d",
+        "accent": "#991b1b"
+      },
+      "features": [
+        "Bold Typography",
+        "Wood-Fired Theme",
+        "Aggressive Style",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-5",
+      "name": "Marea",
+      "description": "Teal & copper - Coastal seafood Mediterranean flair",
+      "category": "Seafood",
+      "thumbnail": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop",
+      "file": "template-6.jsx",
+      "colors": {
+        "primary": "#f97316",
+        "secondary": "#0f766e",
+        "accent": "#134e4a"
+      },
+      "features": [
+        "Ocean Fresh",
+        "Mediterranean Style",
+        "Sustainable Catch",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-6",
+      "name": "NORD",
+      "description": "Stone & charcoal - Scandinavian minimalist purity",
+      "category": "Minimalist",
+      "thumbnail": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&h=300&fit=crop",
+      "file": "template-7.jsx",
+      "colors": {
+        "primary": "#292524",
+        "secondary": "#f5f5f4",
+        "accent": "#78716c"
+      },
+      "features": [
+        "Ultra Minimal",
+        "Scandinavian Design",
+        "Grayscale Images",
+        "Full Ordering System"
+      ]
+    },
+    {
+      "id": "template-7",
+      "name": "Bistro Classique",
+      "description": "Burgundy & beige - Vintage European bistro heritage",
+      "category": "Classic Bistro",
+      "thumbnail": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop",
+      "file": "template-8.jsx",
+      "colors": {
+        "primary": "#7c2d12",
+        "secondary": "#fef3c7",
+        "accent": "#92400e"
+      },
+      "features": [
+        "Vintage Style",
+        "Family Heritage",
+        "Sepia Images",
+        "Full Ordering System"
+      ]
+    }
+  ]
+}

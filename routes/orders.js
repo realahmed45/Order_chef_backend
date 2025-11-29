@@ -1,128 +1,330 @@
 const express = require("express");
+const router = express.Router();
 const Order = require("../models/Order");
 const Restaurant = require("../models/Restaurant");
-const Customer = require("../models/Customer");
-const router = express.Router();
+const authenticate = require("../middleware/authenticate");
 
-// Get all orders for restaurant (Owner only)
-router.get("/", async (req, res) => {
+/**
+ * POST /api/orders/place
+ * Place order from deployed website (NO AUTH REQUIRED - PUBLIC)
+ */
+router.post("/place", async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.userId });
-    if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
+    const { restaurantId, items, customerInfo, total } = req.body;
+
+    console.log("📝 New order received for restaurant:", restaurantId);
+
+    if (!restaurantId || !items || !customerInfo || !total) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
     }
 
-    const orders = await Order.find({ restaurantId: restaurant._id })
-      .sort({ createdAt: -1 })
-      .limit(50);
-
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
-
-// Create new order (from website - PUBLIC endpoint)
-router.post("/", async (req, res) => {
-  try {
-    const { restaurantId, customer, items, orderType, tableNumber } = req.body;
-
+    // Verify restaurant exists
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
     }
 
-    // Calculate total
-    const totalAmount = items.reduce((total, item) => {
-      const modifiersTotal =
-        item.modifiers?.reduce(
-          (modTotal, mod) => modTotal + (mod.price || 0),
-          0
-        ) || 0;
-      return total + (item.price + modifiersTotal) * item.quantity;
-    }, 0);
+    // Calculate totals
+    const subtotal = items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const tax = subtotal * 0.1;
+    const deliveryFee = 5.99;
+    const finalAmount = subtotal + tax + deliveryFee;
 
+    // Create order
     const order = new Order({
-      restaurantId,
-      customer,
-      items,
-      orderType,
-      tableNumber,
-      totalAmount,
-      estimatedReadyTime: new Date(Date.now() + 30 * 60000), // 30 minutes from now
+      restaurantId: restaurantId,
+      customer: {
+        name: customerInfo.name,
+        phone: customerInfo.phone,
+        email: customerInfo.email || "",
+        address: {
+          street: customerInfo.address || "",
+          city: customerInfo.city || "",
+          state: customerInfo.state || "",
+          zipCode: customerInfo.zipCode || "",
+        },
+      },
+      items: items.map((item) => ({
+        _id: item.id || item._id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        description: item.description || "",
+        category: item.category || "",
+      })),
+      orderType: "delivery",
+      paymentMethod:
+        customerInfo.paymentMethod === "card" ? "card" : "cash-on-delivery",
+      paymentStatus: "pending",
+      totalAmount: subtotal,
+      deliveryFee: deliveryFee,
+      tax: tax,
+      finalAmount: finalAmount,
+      status: "pending",
     });
 
     await order.save();
 
-    // Update or create customer
-    if (customer.phone) {
-      await Customer.findOneAndUpdate(
-        { restaurantId, phone: customer.phone },
-        {
-          $set: { name: customer.name, email: customer.email },
-          $inc: {
-            totalOrders: 1,
-            totalSpent: totalAmount,
-            loyaltyPoints: Math.floor(totalAmount),
-          },
-          $set: { lastOrderDate: new Date() },
-        },
-        { upsert: true, new: true }
-      );
-    }
+    console.log("✅ Order created:", order.orderNumber);
 
-    res.status(201).json(order);
+    // TODO: Send notification to restaurant owner
+    // TODO: Send confirmation email/SMS to customer
+
+    res.json({
+      success: true,
+      message: "Order placed successfully!",
+      orderNumber: order.orderNumber,
+      order: {
+        orderNumber: order.orderNumber,
+        status: order.status,
+        estimatedTime: "30-45 minutes",
+        totalAmount: finalAmount,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("❌ Order placement error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to place order",
+      error: error.message,
+    });
   }
 });
 
-// Update order status (Owner only)
-router.put("/:id/status", async (req, res) => {
+/**
+ * GET /api/orders/restaurant/:restaurantId
+ * Get all orders for a restaurant (REQUIRES AUTH)
+ */
+router.get("/restaurant/:restaurantId", authenticate, async (req, res) => {
   try {
-    const { status } = req.body;
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.userId });
+    const { restaurantId } = req.params;
+    const { status, limit = 50, page = 1 } = req.query;
+
+    // Verify ownership
+    const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
     }
 
-    const updateData = { status };
-    if (status === "ready") {
-      updateData.actualReadyTime = new Date();
+    if (restaurant.owner.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, restaurantId: restaurant._id },
-      updateData,
-      { new: true }
+    // Build query
+    const query = { restaurantId };
+    if (status) {
+      query.status = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip);
+
+    const total = await Order.countDocuments(query);
+
+    res.json({
+      success: true,
+      orders: orders,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/orders/:orderId
+ * Get order details (REQUIRES AUTH)
+ */
+router.get("/:orderId", authenticate, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId).populate(
+      "restaurantId",
+      "name"
     );
 
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
 
-    res.json(order);
+    // Verify ownership
+    const restaurant = await Restaurant.findById(order.restaurantId);
+    if (restaurant.owner.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    res.json({
+      success: true,
+      order: order,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error fetching order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch order",
+      error: error.message,
+    });
   }
 });
 
-// Get orders for kitchen display (Owner only)
-router.get("/kitchen/active", async (req, res) => {
+/**
+ * PUT /api/orders/:orderId/status
+ * Update order status (REQUIRES AUTH)
+ */
+router.put("/:orderId/status", authenticate, async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.userId });
-    if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = [
+      "pending",
+      "confirmed",
+      "preparing",
+      "ready",
+      "out-for-delivery",
+      "delivered",
+      "cancelled",
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
     }
 
-    const orders = await Order.find({
-      restaurantId: restaurant._id,
-      status: { $in: ["confirmed", "preparing"] },
-    }).sort({ createdAt: 1 });
+    const order = await Order.findById(orderId);
 
-    res.json(orders);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify ownership
+    const restaurant = await Restaurant.findById(order.restaurantId);
+    if (restaurant.owner.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    order.status = status;
+
+    if (status === "ready") {
+      order.actualReadyTime = new Date();
+    }
+
+    if (status === "delivered") {
+      order.deliveredAt = new Date();
+      order.paymentStatus = "paid";
+    }
+
+    await order.save();
+
+    // TODO: Send notification to customer
+
+    res.json({
+      success: true,
+      message: "Order status updated",
+      order: order,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error updating order status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update order status",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/orders/:orderId
+ * Delete/cancel order (REQUIRES AUTH)
+ */
+router.delete("/:orderId", authenticate, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify ownership
+    const restaurant = await Restaurant.findById(order.restaurantId);
+    if (restaurant.owner.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // Only allow cancellation if order is pending or confirmed
+    if (!["pending", "confirmed"].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot cancel order in current status",
+      });
+    }
+
+    order.status = "cancelled";
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Order cancelled successfully",
+    });
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel order",
+      error: error.message,
+    });
   }
 });
 

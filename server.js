@@ -18,7 +18,11 @@ const server = http.createServer(app);
 // Socket.io Configuration
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://192.168.18.12:3000/",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -217,6 +221,7 @@ app.set("io", io);
 
 // API Routes
 app.use("/api/auth", authLimiter, require("./routes/auth"));
+app.use("/api/public/menu", require("./routes/public-menu"));
 app.use("/api/restaurants", auth, require("./routes/restaurants"));
 app.use("/api/onboarding", auth, require("./routes/onboarding"));
 app.use("/api/menus", auth, require("./routes/menus"));
@@ -226,9 +231,11 @@ app.use("/api/inventory", auth, require("./routes/inventory"));
 app.use("/api/analytics", auth, require("./routes/analytics"));
 app.use("/api/deployments", auth, require("./routes/deployments"));
 app.use("/api/website", require("./routes/website"));
+const templatesRoutes = require("./routes/templates");
 
 // New API Routes (will create these)
 app.use("/api/staff", auth, require("./routes/staff"));
+app.use("/api/templates", templatesRoutes);
 app.use("/api/qr-codes", auth, require("./routes/qrCodes"));
 app.use("/api/social", auth, require("./routes/social"));
 app.use("/api/loyalty", auth, require("./routes/loyalty"));
@@ -400,7 +407,9 @@ app.use((error, req, res, next) => {
         : "Something went wrong",
   });
 });
+// Serve deployed React websites
 
+app.use("/restaurant", express.static(path.join(__dirname, "../deployments")));
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
